@@ -7,6 +7,7 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 import { getTrackingEntry } from "../utils/trackingData";
+import expLogo from "../asset/expLogo.png";
 
 const Hero = () => {
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -38,7 +39,7 @@ const Hero = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) =>
-        prevIndex === carouselImages.length - 1 ? 0 : prevIndex + 1
+        prevIndex === carouselImages.length - 1 ? 0 : prevIndex + 1,
       );
     }, 5000); // Change image every 5 seconds
 
@@ -49,7 +50,7 @@ const Hero = () => {
     setCurrentImageIndex(
       currentImageIndex === carouselImages.length - 1
         ? 0
-        : currentImageIndex + 1
+        : currentImageIndex + 1,
     );
   };
 
@@ -57,7 +58,7 @@ const Hero = () => {
     setCurrentImageIndex(
       currentImageIndex === 0
         ? carouselImages.length - 1
-        : currentImageIndex - 1
+        : currentImageIndex - 1,
     );
   };
 
@@ -90,9 +91,16 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Full-width Image Carousel Background */}
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black">
+      {/* Premium Gradient Background with Mesh */}
       <div className="absolute inset-0 w-full h-full">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-blue-950/30 to-slate-900"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl opacity-30"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl opacity-30"></div>
+      </div>
+
+      {/* Full-width Image Carousel Background */}
+      <div className="absolute inset-0 w-full h-full opacity-40">
         {carouselImages.map((image, index) => (
           <div
             key={index}
@@ -155,54 +163,58 @@ const Hero = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/98 backdrop-blur-md shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-3">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto flex justify-between items-center px-6 py-4">
           <div className="flex items-center space-x-3">
             <img
-              src="/cargo.jpg"
+              src={expLogo}
               alt="Express Cargo Logo"
-              className="h-12 w-12 object-cover rounded-lg shadow-md"
+              className="h-12 w-12 object-contain rounded-lg shadow-md"
             />
-            <div className="text-xl font-bold">
-              <span className="text-cyan-600">Express</span>
-              <span className="text-gray-800"> Cargo Shipping Logistics</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-800 leading-tight">
+                Express Cargo
+              </span>
+              <span className="text-xs text-gray-600 leading-tight">
+                Shipping Logistics
+              </span>
             </div>
           </div>
           <div className="hidden md:flex items-center space-x-8">
             <a
               href="#home"
-              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium"
             >
               Home
             </a>
             <a
               href="#services"
-              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium"
             >
               Services
             </a>
             <a
               href="#features"
-              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium"
             >
               About
             </a>
             <a
               href="#contact"
-              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium px-3 py-2 rounded-md hover:bg-gray-50"
+              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 font-medium"
             >
               Contact
             </a>
-            <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-300">
+            <div className="flex items-center space-x-3 ml-6 pl-6 border-l border-gray-300">
               <Link
                 to="/track"
-                className="text-cyan-600 hover:text-cyan-700 font-medium px-4 py-2 border border-cyan-600 rounded-md hover:bg-cyan-50 transition-all duration-300"
+                className="text-cyan-600 hover:text-cyan-700 font-medium px-4 py-2 border border-cyan-600 rounded-lg hover:bg-cyan-50 transition-all duration-300"
               >
-                Track Shipment
+                Track
               </Link>
               <Link
                 to="/quote"
-                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium px-4 py-2 rounded-md hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 shadow-md"
+                className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-medium px-6 py-2 rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 shadow-lg shadow-cyan-500/50"
               >
                 Get Quote
               </Link>
@@ -213,10 +225,9 @@ const Hero = () => {
           <div className="md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-700 hover:text-cyan-600 focus:outline-none focus:text-cyan-600 transition-colors duration-300"
+              className="text-gray-700 hover:text-cyan-600 focus:outline-none transition-colors duration-300"
             >
               {isMobileMenuOpen ? (
-                // Close/Cancel Icon
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -231,7 +242,6 @@ const Hero = () => {
                   />
                 </svg>
               ) : (
-                // Hamburger Icon
                 <svg
                   className="h-6 w-6"
                   fill="none"
@@ -374,7 +384,7 @@ const Hero = () => {
                         </h3>
                         <p
                           className={`text-lg font-semibold ${getStatusColor(
-                            trackingResult.status
+                            trackingResult.status,
                           )}`}
                         >
                           {trackingResult.status}

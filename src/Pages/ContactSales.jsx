@@ -1,37 +1,47 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { FaPhone, FaEnvelope, FaComments, FaMapMarkerAlt, FaClock, FaSpinner, FaUser, FaBuilding } from 'react-icons/fa'
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  FaPhone,
+  FaEnvelope,
+  FaComments,
+  FaMapMarkerAlt,
+  FaClock,
+  FaSpinner,
+  FaUser,
+  FaBuilding,
+} from "react-icons/fa";
+import expLogo from "../asset/expLogo.png";
 
 const ContactSales = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    message: '',
-    preferredContact: 'email'
-  })
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    message: "",
+    preferredContact: "email",
+  });
 
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
+      [e.target.name]: e.target.value,
+    });
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    
+    e.preventDefault();
+    setIsSubmitting(true);
+
     // Simulate form submission
     setTimeout(() => {
-      setIsSubmitting(false)
-      setIsSubmitted(true)
-    }, 2000)
-  }
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+    }, 2000);
+  };
 
   if (isSubmitted) {
     return (
@@ -39,18 +49,21 @@ const ContactSales = () => {
         <div className="max-w-2xl mx-auto px-6 text-center">
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-12 border border-white/20">
             <div className="text-6xl mb-6 text-green-400">✓</div>
-            <h1 className="text-4xl font-bold text-white mb-6">Message Sent Successfully!</h1>
+            <h1 className="text-4xl font-bold text-white mb-6">
+              Message Sent Successfully!
+            </h1>
             <p className="text-xl text-blue-200 mb-8">
-              Thank you for contacting our sales team! We'll get back to you within 2 hours during business hours.
+              Thank you for contacting our sales team! We'll get back to you
+              within 2 hours during business hours.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
+              <Link
                 to="/"
                 className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300"
               >
                 Back to Home
               </Link>
-              <Link 
+              <Link
                 to="/quote"
                 className="px-8 py-4 border-2 border-cyan-400 text-cyan-400 font-semibold rounded-lg hover:bg-cyan-400 hover:text-slate-900 transform hover:scale-105 transition-all duration-300"
               >
@@ -60,27 +73,35 @@ const ContactSales = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       {/* Navigation */}
-      <nav className="p-6">
+      <nav className="p-6 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="flex items-center space-x-3">
-            <img 
-              src="/cargo.jpg" 
-              alt="Express Cargo Logo" 
-              className="h-10 w-10 object-cover rounded-lg shadow-md"
+          <Link
+            to="/"
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300"
+          >
+            <img
+              src={expLogo}
+              alt="Express Cargo Logo"
+              className="h-10 w-10 object-contain rounded-lg shadow-md"
             />
-            <div className="text-xl font-bold text-white">
-              <span className="text-cyan-400">Express</span> Cargo Shipping Logistics
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-800 leading-tight">
+                Express Cargo
+              </span>
+              <span className="text-xs text-gray-600 leading-tight">
+                Shipping Logistics
+              </span>
             </div>
           </Link>
-          <Link 
-            to="/" 
-            className="text-white hover:text-cyan-400 transition-colors duration-300"
+          <Link
+            to="/"
+            className="text-gray-700 hover:text-cyan-400 transition-colors duration-300"
           >
             ← Back to Home
           </Link>
@@ -91,18 +112,24 @@ const ContactSales = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-6">
-            Contact Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Sales Team</span>
+            Contact Our{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+              Sales Team
+            </span>
           </h1>
           <p className="text-xl text-blue-200">
-            Ready to discuss your shipping needs? Our experts are here to help you find the perfect solution.
+            Ready to discuss your shipping needs? Our experts are here to help
+            you find the perfect solution.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12">
           {/* Contact Form */}
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <h3 className="text-2xl font-bold text-white mb-6">Send us a Message</h3>
-            
+            <h3 className="text-2xl font-bold text-white mb-6">
+              Send us a Message
+            </h3>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
@@ -171,22 +198,26 @@ const ContactSales = () => {
               </div>
 
               <div>
-                <label className="block text-white font-semibold mb-2">Preferred Contact Method</label>
+                <label className="block text-white font-semibold mb-2">
+                  Preferred Contact Method
+                </label>
                 <div className="flex gap-6">
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       name="preferredContact"
                       value="email"
-                      checked={formData.preferredContact === 'email'}
+                      checked={formData.preferredContact === "email"}
                       onChange={handleInputChange}
                       className="sr-only"
                     />
-                    <div className={`w-4 h-4 rounded-full border-2 mr-2 ${
-                      formData.preferredContact === 'email' 
-                        ? 'border-cyan-400 bg-cyan-400' 
-                        : 'border-white/40'
-                    }`}></div>
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 mr-2 ${
+                        formData.preferredContact === "email"
+                          ? "border-cyan-400 bg-cyan-400"
+                          : "border-white/40"
+                      }`}
+                    ></div>
                     <span className="text-white">Email</span>
                   </label>
                   <label className="flex items-center cursor-pointer">
@@ -194,22 +225,26 @@ const ContactSales = () => {
                       type="radio"
                       name="preferredContact"
                       value="phone"
-                      checked={formData.preferredContact === 'phone'}
+                      checked={formData.preferredContact === "phone"}
                       onChange={handleInputChange}
                       className="sr-only"
                     />
-                    <div className={`w-4 h-4 rounded-full border-2 mr-2 ${
-                      formData.preferredContact === 'phone' 
-                        ? 'border-cyan-400 bg-cyan-400' 
-                        : 'border-white/40'
-                    }`}></div>
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 mr-2 ${
+                        formData.preferredContact === "phone"
+                          ? "border-cyan-400 bg-cyan-400"
+                          : "border-white/40"
+                      }`}
+                    ></div>
                     <span className="text-white">Phone</span>
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-white font-semibold mb-2">Message</label>
+                <label className="block text-white font-semibold mb-2">
+                  Message
+                </label>
                 <textarea
                   name="message"
                   value={formData.message}
@@ -232,7 +267,7 @@ const ContactSales = () => {
                     Sending Message...
                   </span>
                 ) : (
-                  'Send Message'
+                  "Send Message"
                 )}
               </button>
             </form>
@@ -242,17 +277,25 @@ const ContactSales = () => {
           <div className="space-y-8">
             {/* Direct Contact */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-              <h3 className="text-2xl font-bold text-white mb-6">Get in Touch Directly</h3>
-              
+              <h3 className="text-2xl font-bold text-white mb-6">
+                Get in Touch Directly
+              </h3>
+
               <div className="space-y-6">
                 <div className="flex items-start space-x-4">
                   <div className="text-2xl text-cyan-400 mt-1">
                     <FaPhone />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Sales Hotline</h4>
-                    <p className="text-cyan-400 text-lg font-semibold">+1 (555) 123-4567</p>
-                    <p className="text-blue-200 text-sm">Available 24/7 for urgent inquiries</p>
+                    <h4 className="text-white font-semibold mb-1">
+                      Sales Hotline
+                    </h4>
+                    <p className="text-cyan-400 text-lg font-semibold">
+                      +1 (555) 123-4567
+                    </p>
+                    <p className="text-blue-200 text-sm">
+                      Available 24/7 for urgent inquiries
+                    </p>
                   </div>
                 </div>
 
@@ -261,9 +304,15 @@ const ContactSales = () => {
                     <FaEnvelope />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold mb-1">Sales Email</h4>
-                    <p className="text-cyan-400 text-lg font-semibold">sales@expresscargoship.com</p>
-                    <p className="text-blue-200 text-sm">Response within 2 hours</p>
+                    <h4 className="text-white font-semibold mb-1">
+                      Sales Email
+                    </h4>
+                    <p className="text-cyan-400 text-lg font-semibold">
+                      sales@expresscargoship.com
+                    </p>
+                    <p className="text-blue-200 text-sm">
+                      Response within 2 hours
+                    </p>
                   </div>
                 </div>
 
@@ -273,8 +322,12 @@ const ContactSales = () => {
                   </div>
                   <div>
                     <h4 className="text-white font-semibold mb-1">Live Chat</h4>
-                    <p className="text-cyan-400 text-lg font-semibold">Available on website</p>
-                    <p className="text-blue-200 text-sm">Instant support during business hours</p>
+                    <p className="text-cyan-400 text-lg font-semibold">
+                      Available on website
+                    </p>
+                    <p className="text-blue-200 text-sm">
+                      Instant support during business hours
+                    </p>
                   </div>
                 </div>
               </div>
@@ -286,25 +339,33 @@ const ContactSales = () => {
                 <FaClock className="inline mr-3 text-cyan-400" />
                 Business Hours
               </h3>
-              
+
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-blue-200">Monday - Friday</span>
-                  <span className="text-white font-semibold">8:00 AM - 8:00 PM EST</span>
+                  <span className="text-white font-semibold">
+                    8:00 AM - 8:00 PM EST
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-blue-200">Saturday</span>
-                  <span className="text-white font-semibold">9:00 AM - 5:00 PM EST</span>
+                  <span className="text-white font-semibold">
+                    9:00 AM - 5:00 PM EST
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-blue-200">Sunday</span>
-                  <span className="text-white font-semibold">Emergency Only</span>
+                  <span className="text-white font-semibold">
+                    Emergency Only
+                  </span>
                 </div>
               </div>
-              
+
               <div className="mt-6 p-4 bg-cyan-400/10 rounded-lg border border-cyan-400/20">
                 <p className="text-cyan-300 text-sm">
-                  <strong>24/7 Emergency Support:</strong> For urgent shipments and time-sensitive cargo, our emergency hotline is always available.
+                  <strong>24/7 Emergency Support:</strong> For urgent shipments
+                  and time-sensitive cargo, our emergency hotline is always
+                  available.
                 </p>
               </div>
             </div>
@@ -315,9 +376,11 @@ const ContactSales = () => {
                 <FaMapMarkerAlt className="inline mr-3 text-cyan-400" />
                 Headquarters
               </h3>
-              
+
               <div className="text-blue-200 leading-relaxed">
-                <p className="font-semibold text-white mb-2">Express Cargo Shipping Logistics</p>
+                <p className="font-semibold text-white mb-2">
+                  Express Cargo Shipping Logistics
+                </p>
                 <p>1234 Harbor Drive, Suite 500</p>
                 <p>Miami, FL 33101</p>
                 <p>United States</p>
@@ -327,7 +390,7 @@ const ContactSales = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ContactSales
+export default ContactSales;

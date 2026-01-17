@@ -16,6 +16,7 @@ import {
   updateTrackingEntry,
   deleteTrackingEntry,
 } from "../utils/trackingData";
+import expLogo from "../asset/expLogo.png";
 
 const AdminDashboard = () => {
   const { data: trackingData, refreshData } = useTrackingData();
@@ -78,7 +79,7 @@ const AdminDashboard = () => {
   const handleDelete = (trackingNumber) => {
     if (
       window.confirm(
-        `Are you sure you want to delete tracking ${trackingNumber}?`
+        `Are you sure you want to delete tracking ${trackingNumber}?`,
       )
     ) {
       deleteTrackingEntry(trackingNumber);
@@ -185,28 +186,36 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       {/* Navigation */}
-      <nav className="p-6">
+      <nav className="p-6 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/" className="flex items-center space-x-3">
+          <Link
+            to="/"
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300"
+          >
             <img
-              src="/cargo.jpg"
+              src={expLogo}
               alt="Express Cargo Logo"
-              className="h-10 w-10 object-cover rounded-lg shadow-md"
+              className="h-10 w-10 object-contain rounded-lg shadow-md"
             />
-            <div className="text-xl font-bold text-white">
-              <span className="text-cyan-400">Express</span> Cargo Admin
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-800 leading-tight">
+                Express Cargo
+              </span>
+              <span className="text-xs text-gray-600 leading-tight">
+                Shipping Logistics
+              </span>
             </div>
           </Link>
           <div className="flex items-center space-x-4">
             <Link
               to="/"
-              className="text-white hover:text-cyan-400 transition-colors duration-300 px-4 py-2 border border-white/30 rounded-md hover:bg-white/10"
+              className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Site
             </Link>
             <button
               onClick={handleLogout}
-              className="text-white hover:text-red-400 transition-colors duration-300 px-4 py-2 border border-red-400/30 rounded-md hover:bg-red-400/10"
+              className="text-red-600 hover:text-red-700 transition-colors duration-300 px-4 py-2 border border-red-300 rounded-md hover:bg-red-50"
             >
               Logout
             </button>
@@ -251,12 +260,12 @@ const AdminDashboard = () => {
                       entry.status === "Delivered"
                         ? "text-green-400"
                         : entry.status === "In Transit"
-                        ? "text-blue-400"
-                        : entry.status === "Out for Delivery"
-                        ? "text-yellow-400"
-                        : entry.status === "Pending"
-                        ? "text-orange-400"
-                        : "text-gray-400"
+                          ? "text-blue-400"
+                          : entry.status === "Out for Delivery"
+                            ? "text-yellow-400"
+                            : entry.status === "Pending"
+                              ? "text-orange-400"
+                              : "text-gray-400"
                     }`}
                   >
                     {entry.status}
@@ -428,7 +437,7 @@ const AdminDashboard = () => {
                             updateTimelineEvent(
                               index,
                               "completed",
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           className="rounded"
