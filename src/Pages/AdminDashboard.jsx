@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   FaPlus,
   FaEdit,
@@ -10,36 +12,85 @@ import {
   FaBox,
   FaSpinner,
 } from "react-icons/fa";
-import {
-  useTrackingData,
-  addTrackingEntry,
-  updateTrackingEntry,
-  deleteTrackingEntry,
-} from "../utils/trackingData";
+// import {
+//   useTrackingData,
+//   addTrackingEntry,
+//   updateTrackingEntry,
+//   deleteTrackingEntry,
+// } from "../utils/trackingData";
 import expLogo from "../asset/expLogo.png";
+import axios from "axios";
 
 const AdminDashboard = () => {
-  const { data: trackingData, refreshData } = useTrackingData();
+  // const { data: trackingData, refreshData } = useTrackingData();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState(null);
   const [formData, setFormData] = useState({
     trackingNumber: "",
-    location: "",
+    currentLocation: "",
     estimatedDelivery: "",
-    timeline: [],
+    status: "Pending",
+    progress: 0,
+    events: [],
   });
 
+  const [allTracking, setAllTracking] = useState({});
+
+  const url = "https://express-cargo-backend.onrender.com/api/tracking";
+
   // Simple password check (in production, use proper authentication)
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (password === "admin123") {
-      setIsLoggedIn(true);
-      setLoginError("");
-    } else {
-      setLoginError("Invalid password");
+    setLoginLoading(true);
+    setLoginError("");
+
+    try {
+      const response = await axios.post(
+        "https://express-cargo-backend.onrender.com/api/admin/adminlogin",
+        { email, password },
+      );
+      if (response.data.message.includes("successful")) {
+        setLoginSuccess("Login successful! 🎉");
+        setLoginError("");
+        toast.success("Login successful! 🎉", {
+          position: "top-center",
+          autoClose: 2000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          theme: "dark",
+        });
+
+        // Delay dashboard display to show success toast
+        setTimeout(() => {
+          setIsLoggedIn(true);
+          setEmail("");
+          setPassword("");
+          setLoginSuccess("");
+        }, 1500);
+      } else {
+        setLoginError(response.data.message || "Invalid credentials");
+        setLoginSuccess("");
+        toast.error(response.data.message || "Login failed");
+      }
+    } catch (err) {
+      console.log("Login error:", err);
+      const errorMessage =
+        err.response?.data?.message || "Error logging in. Please try again.";
+      setLoginError(errorMessage);
+      setLoginSuccess("");
+      toast.error(errorMessage);
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -51,9 +102,11 @@ const AdminDashboard = () => {
   const resetForm = () => {
     setFormData({
       trackingNumber: "",
-      location: "",
+      currentLocation: "",
       estimatedDelivery: "",
-      timeline: [],
+      status: "Pending",
+      progress: 0,
+      events: [],
     });
     setEditingId(null);
     setShowForm(false);
@@ -64,47 +117,78 @@ const AdminDashboard = () => {
     setShowForm(true);
   };
 
-  const handleEdit = (trackingNumber) => {
-    const entry = trackingData[trackingNumber];
+  const handleEdit = (id) => {
+    const entry = Object.values(allTracking || {}).find(
+      (item) => item._id === id,
+    );
     if (entry) {
       setFormData({
-        trackingNumber,
-        ...entry,
+        trackingNumber: entry.trackingNumber,
+        currentLocation: entry.currentLocation,
+        estimatedDelivery: entry.estimatedDelivery,
+        status: entry.status || "Pending",
+        progress: entry.progress || 0,
+        events: entry.events || [],
       });
-      setEditingId(trackingNumber);
+      setEditingId(id);
       setShowForm(true);
     }
   };
 
-  const handleDelete = (trackingNumber) => {
+  const handleDelete = async (id) => {
     if (
-      window.confirm(
-        `Are you sure you want to delete tracking ${trackingNumber}?`,
-      )
+      window.confirm(`Are you sure you want to delete this tracking entry?`)
     ) {
-      deleteTrackingEntry(trackingNumber);
-      refreshData();
+      setLoadingId(id);
+      try {
+        await axios.delete(`${url}/${id}`);
+        // Remove from state immediately without waiting for API refresh
+        setAllTracking((prev) => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
+        toast.success("Tracking entry deleted successfully!");
+        window.location.reload();
+      } catch (err) {
+        console.log("error deleting:", err);
+        toast.error("Error deleting tracking entry");
+      } finally {
+        setLoadingId(null);
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    if (editingId) {
-      updateTrackingEntry(editingId, formData);
-    } else {
-      addTrackingEntry(formData.trackingNumber, formData);
+    try {
+      if (editingId) {
+        await axios.put(`${url}/${editingId}`, formData);
+        toast.success("Tracking entry updated successfully!");
+      } else {
+        await axios.post(`${url}`, formData);
+        toast.success("Tracking entry created successfully!");
+      }
+
+      // Refresh data after submit
+      const res = await axios.get(`${url}/getalltracking`);
+      setAllTracking(res?.data?.data || {});
+      resetForm();
+    } catch (err) {
+      console.log("error:", err);
+      toast.error("Error saving tracking entry");
+    } finally {
+      setIsLoading(false);
     }
-
-    refreshData();
-    resetForm();
   };
 
   const addTimelineEvent = () => {
     setFormData({
       ...formData,
-      timeline: [
-        ...formData.timeline,
+      events: [
+        ...formData.events,
         {
           date: new Date().toISOString().split("T")[0],
           status: "",
@@ -116,15 +200,35 @@ const AdminDashboard = () => {
   };
 
   const updateTimelineEvent = (index, field, value) => {
-    const newTimeline = [...formData.timeline];
-    newTimeline[index][field] = value;
-    setFormData({ ...formData, timeline: newTimeline });
+    const newEvents = [...formData.events];
+    newEvents[index][field] = value;
+    setFormData({ ...formData, events: newEvents });
   };
 
   const removeTimelineEvent = (index) => {
-    const newTimeline = formData.timeline.filter((_, i) => i !== index);
-    setFormData({ ...formData, timeline: newTimeline });
+    const newEvents = formData.events.filter((_, i) => i !== index);
+    setFormData({ ...formData, events: newEvents });
   };
+
+  const generateTrackingNumber = () => {
+    const randomNum = Math.random().toString(36).substring(2, 11).toUpperCase();
+    const trackingNumber = `ECSL${randomNum}`;
+    setFormData({ ...formData, trackingNumber });
+  };
+
+  useEffect(() => {
+    const handleGetAllTrackingData = async () => {
+      try {
+        const res = await axios.get(`${url}/getalltracking`);
+        setAllTracking(res?.data?.data);
+        // console.log("Get All Tracking", res);
+      } catch (err) {
+        console.log("error", err);
+      }
+    };
+
+    handleGetAllTrackingData();
+  }, []);
 
   if (!isLoggedIn) {
     return (
@@ -139,12 +243,30 @@ const AdminDashboard = () => {
                 Admin Dashboard
               </h1>
               <p className="text-blue-200">
-                Enter password to access tracking management
+                Enter your credentials to access tracking management
               </p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
               <div>
+                <label className="block text-white font-semibold mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter admin email"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                  required
+                  disabled={loginLoading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-white font-semibold mb-2">
+                  Password
+                </label>
                 <input
                   type="password"
                   value={password}
@@ -152,20 +274,35 @@ const AdminDashboard = () => {
                   placeholder="Enter admin password"
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                   required
+                  disabled={loginLoading}
                 />
               </div>
 
               {loginError && (
-                <div className="text-red-400 text-center text-sm">
+                <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/30">
                   {loginError}
+                </div>
+              )}
+
+              {loginSuccess && (
+                <div className="text-green-400 text-center text-sm bg-green-500/10 p-3 rounded-lg border border-green-500/30">
+                  {loginSuccess}
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300"
+                disabled={loginLoading}
+                className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-300 flex items-center justify-center space-x-2"
               >
-                Login
+                {loginLoading ? (
+                  <>
+                    <FaSpinner className="animate-spin" />
+                    <span>Logging in...</span>
+                  </>
+                ) : (
+                  <span>Login</span>
+                )}
               </button>
             </form>
 
@@ -185,6 +322,18 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
       {/* Navigation */}
       <nav className="p-6 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -244,72 +393,86 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tracking Entries Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {Object.entries(trackingData).map(([trackingNumber, entry]) => (
-            <div
-              key={trackingNumber}
-              className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
-                    {trackingNumber}
-                  </h3>
-                  <p
-                    className={`text-sm font-semibold ${
-                      entry.status === "Delivered"
-                        ? "text-green-400"
-                        : entry.status === "In Transit"
-                          ? "text-blue-400"
-                          : entry.status === "Out for Delivery"
-                            ? "text-yellow-400"
-                            : entry.status === "Pending"
-                              ? "text-orange-400"
-                              : "text-gray-400"
-                    }`}
-                  >
-                    {entry.status}
+        {Object.keys(allTracking || {}).length === 0 ? (
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-12 border border-white/20 text-center mb-8">
+            <p className="text-xl text-blue-200">No tracking data available</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Add a new tracking entry to get started
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {Object.values(allTracking || {}).map((entry) => (
+              <div
+                key={entry._id}
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-1">
+                      {entry.trackingNumber}
+                    </h3>
+                    <p
+                      className={`text-sm font-semibold ${
+                        entry.status === "Delivered"
+                          ? "text-green-400"
+                          : entry.status === "In Transit"
+                            ? "text-blue-400"
+                            : entry.status === "Out for Delivery"
+                              ? "text-yellow-400"
+                              : entry.status === "Pending"
+                                ? "text-orange-400"
+                                : "text-gray-400"
+                      }`}
+                    >
+                      {entry.status}
+                    </p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEdit(entry._id)}
+                      className="p-2 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      title="Edit"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(entry._id)}
+                      disabled={loadingId === entry._id}
+                      className="p-2 text-red-400 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete"
+                    >
+                      {loadingId === entry._id ? (
+                        <FaSpinner className="animate-spin" />
+                      ) : (
+                        <FaTrash />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <p className="text-blue-200">
+                    <span className="text-white font-semibold">Location:</span>{" "}
+                    {entry.currentLocation}
+                  </p>
+                  <p className="text-blue-200">
+                    <span className="text-white font-semibold">ETA:</span>{" "}
+                    {entry.estimatedDelivery}
+                  </p>
+                  <p className="text-blue-200">
+                    <span className="text-white font-semibold">Progress:</span>{" "}
+                    {entry.progress}%
+                  </p>
+                  <p className="text-blue-200">
+                    <span className="text-white font-semibold">Events:</span>{" "}
+                    {entry.events.length}
                   </p>
                 </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(trackingNumber)}
-                    className="p-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-                    title="Edit"
-                  >
-                    <FaEdit />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(trackingNumber)}
-                    className="p-2 text-red-400 hover:text-red-300 transition-colors"
-                    title="Delete"
-                  >
-                    <FaTrash />
-                  </button>
-                </div>
               </div>
-
-              <div className="space-y-2 text-sm">
-                <p className="text-blue-200">
-                  <span className="text-white font-semibold">Location:</span>{" "}
-                  {entry.location}
-                </p>
-                <p className="text-blue-200">
-                  <span className="text-white font-semibold">ETA:</span>{" "}
-                  {entry.estimatedDelivery}
-                </p>
-                <p className="text-blue-200">
-                  <span className="text-white font-semibold">Progress:</span>{" "}
-                  {entry.progress}%
-                </p>
-                <p className="text-blue-200">
-                  <span className="text-white font-semibold">Events:</span>{" "}
-                  {entry.timeline.length}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Add/Edit Form */}
         {showForm && (
@@ -332,20 +495,31 @@ const AdminDashboard = () => {
                   <label className="block text-white font-semibold mb-2">
                     Tracking Number
                   </label>
-                  <input
-                    type="text"
-                    value={formData.trackingNumber}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        trackingNumber: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                    placeholder="e.g., CS123456789"
-                    required
-                    disabled={!!editingId}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.trackingNumber}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          trackingNumber: e.target.value,
+                        })
+                      }
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                      placeholder="e.g., ECSL123456789"
+                      required
+                      disabled={!!editingId}
+                    />
+                    <button
+                      type="button"
+                      onClick={generateTrackingNumber}
+                      disabled={!!editingId}
+                      className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                      title="Generate Tracking Number"
+                    >
+                      Generate
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-white font-semibold mb-2">
@@ -353,9 +527,12 @@ const AdminDashboard = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.location}
+                    value={formData.currentLocation}
                     onChange={(e) =>
-                      setFormData({ ...formData, location: e.target.value })
+                      setFormData({
+                        ...formData,
+                        currentLocation: e.target.value,
+                      })
                     }
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                     placeholder="e.g., Port of Los Angeles, CA"
@@ -381,6 +558,51 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Status and Progress */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-white font-semibold mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                  >
+                    <option value="Pending" className="bg-gray-900">
+                      Pending
+                    </option>
+                    <option value="In Transit" className="bg-gray-900">
+                      In Transit
+                    </option>
+                    <option value="Delivered" className="bg-gray-900">
+                      Delivered
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-white font-semibold mb-2">
+                    Progress (%)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.progress}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        progress: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                    placeholder="0-100"
+                  />
+                </div>
+              </div>
+
               {/* Timeline Events */}
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -398,7 +620,7 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="space-y-4">
-                  {formData.timeline.map((event, index) => (
+                  {formData.events.map((event, index) => (
                     <div
                       key={index}
                       className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg"
@@ -411,15 +633,26 @@ const AdminDashboard = () => {
                         }
                         className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
                       />
-                      <input
-                        type="text"
+                      <select
                         value={event.status}
                         onChange={(e) =>
                           updateTimelineEvent(index, "status", e.target.value)
                         }
-                        placeholder="Status"
-                        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
-                      />
+                        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
+                      >
+                        <option value="" className="bg-gray-900">
+                          Select Status
+                        </option>
+                        <option value="Pending" className="bg-gray-900">
+                          Pending
+                        </option>
+                        <option value="In Transit" className="bg-gray-900">
+                          In Transit
+                        </option>
+                        <option value="Delivered" className="bg-gray-900">
+                          Delivered
+                        </option>
+                      </select>
                       <input
                         type="text"
                         value={event.location}
@@ -459,15 +692,21 @@ const AdminDashboard = () => {
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
                 >
-                  <FaSave />
+                  {isLoading ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaSave />
+                  )}
                   <span>{editingId ? "Update Tracking" : "Save Tracking"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-3 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/10 transition-all duration-300"
+                  disabled={isLoading}
+                  className="px-6 py-3 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                 >
                   Cancel
                 </button>

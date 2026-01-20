@@ -6,7 +6,8 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import { getTrackingEntry } from "../utils/trackingData";
+import axios from "axios";
+import { toast } from "react-toastify";
 import expLogo from "../asset/expLogo.png";
 
 const Hero = () => {
@@ -62,17 +63,29 @@ const Hero = () => {
     );
   };
 
-  const handleTrack = () => {
+  const handleTrack = async () => {
     if (!trackingNumber.trim()) return;
 
     setIsLoading(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const result = getTrackingEntry(trackingNumber);
-      setTrackingResult(result || "not_found");
+    try {
+      const response = await axios.get(
+        `https://express-cargo-backend.onrender.com/api/tracking/${trackingNumber.toUpperCase()}`,
+      );
+      setTrackingResult(response.data.data);
+      toast.success("Shipment found!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      setTrackingResult("not_found");
+      toast.error("Tracking number not found", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -337,7 +350,7 @@ const Hero = () => {
             <div className="flex flex-col sm:flex-row gap-4 mb-4">
               <input
                 type="text"
-                placeholder="Enter tracking number (try: CS123456789)"
+                placeholder="Enter tracking number (try: ECSL123456789)"
                 value={trackingNumber}
                 onChange={(e) => setTrackingNumber(e.target.value)}
                 className="flex-1 px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30 backdrop-blur-sm"
@@ -420,27 +433,28 @@ const Hero = () => {
                       <h4 className="text-white font-semibold mb-2">
                         Latest Update
                       </h4>
-                      {trackingResult.timeline
-                        .filter((event) => event.completed)
-                        .slice(-1)
-                        .map((event, index) => (
-                          <div
-                            key={index}
-                            className="flex justify-between items-center"
-                          >
-                            <div>
-                              <p className="text-white font-medium">
-                                {event.status}
-                              </p>
-                              <p className="text-blue-100 text-sm">
-                                {event.location}
+                      {trackingResult.events &&
+                        trackingResult.events
+                          .filter((event) => event.completed)
+                          .slice(-1)
+                          .map((event, index) => (
+                            <div
+                              key={index}
+                              className="flex justify-between items-center"
+                            >
+                              <div>
+                                <p className="text-white font-medium">
+                                  {event.status}
+                                </p>
+                                <p className="text-blue-100 text-sm">
+                                  {event.location}
+                                </p>
+                              </div>
+                              <p className="text-blue-200 text-sm">
+                                {event.date}
                               </p>
                             </div>
-                            <p className="text-blue-200 text-sm">
-                              {event.date}
-                            </p>
-                          </div>
-                        ))}
+                          ))}
                     </div>
 
                     {/* Link to full tracking */}

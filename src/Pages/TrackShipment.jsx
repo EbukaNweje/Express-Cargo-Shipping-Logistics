@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { FaBox, FaSpinner } from "react-icons/fa";
-import { getTrackingEntry } from "../utils/trackingData";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import expLogo from "../asset/expLogo.png";
+import axios from "axios";
 
 const TrackShipment = () => {
   const [searchParams] = useSearchParams();
@@ -13,17 +15,33 @@ const TrackShipment = () => {
   const [isLoading, setIsLoading] = useState(false);
   const hasAutoTrackedRef = useRef(false);
 
-  const handleTrackWithNumber = useCallback((number) => {
+  const apiUrl = "https://express-cargo-backend.onrender.com/api/tracking";
+
+  const handleTrackWithNumber = useCallback(async (number) => {
     if (!number.trim()) return;
 
     setIsLoading(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const result = getTrackingEntry(number);
-      setTrackingResult(result || "not_found");
+    try {
+      // Call API to get tracking by tracking number
+      const response = await axios.get(`${apiUrl}/${number}`);
+
+      if (response.data.success && response.data.data) {
+        console.log("object", response);
+
+        setTrackingResult(response.data.data);
+        toast.success("Tracking found!");
+      } else {
+        setTrackingResult("not_found");
+        toast.info("Tracking number not found");
+      }
+    } catch (err) {
+      console.log("Tracking error:", err);
+      setTrackingResult("not_found");
+      toast.error("Error fetching tracking information");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   }, []);
 
   // Auto-track if number is provided in URL on component mount
@@ -107,7 +125,7 @@ const TrackShipment = () => {
           <div className="flex flex-col sm:flex-row gap-4">
             <input
               type="text"
-              placeholder="Enter tracking number (try: CS123456789 or CS987654321)"
+              placeholder="Enter tracking number (try: ECSL123456789 or ECSL987654321)"
               value={trackingNumber}
               onChange={(e) => setTrackingNumber(e.target.value)}
               className="flex-1 px-6 py-4 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
@@ -144,7 +162,7 @@ const TrackShipment = () => {
                 <p className="text-blue-200">
                   Please check your tracking number and try again.
                   <br />
-                  Try: CS123456789 or CS987654321 for demo purposes.
+                  {/* Try: CS123456789 or CS987654321 for demo purposes. */}
                 </p>
               </div>
             ) : (
@@ -163,7 +181,7 @@ const TrackShipment = () => {
                       {trackingResult.status}
                     </p>
                     <p className="text-blue-200">
-                      Current Location: {trackingResult.location}
+                      Current Location: {trackingResult.currentLocation}
                     </p>
                   </div>
                   <div className="text-right mt-4 md:mt-0">
@@ -194,36 +212,41 @@ const TrackShipment = () => {
                     Shipment Timeline
                   </h4>
                   <div className="space-y-4">
-                    {trackingResult.timeline.map((event, index) => (
-                      <div key={index} className="flex items-start space-x-4">
-                        <div
-                          className={`w-4 h-4 rounded-full mt-1 flex-shrink-0 ${
-                            event.completed ? "bg-cyan-400" : "bg-white/20"
-                          }`}
-                        ></div>
-                        <div className="flex-1">
-                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
-                            <div>
-                              <p
-                                className={`font-semibold ${
-                                  event.completed
-                                    ? "text-white"
-                                    : "text-blue-300"
-                                }`}
-                              >
-                                {event.status}
-                              </p>
-                              <p className="text-blue-200 text-sm">
-                                {event.location}
+                    {trackingResult.events &&
+                    trackingResult.events.length > 0 ? (
+                      trackingResult.events.map((event, index) => (
+                        <div key={index} className="flex items-start space-x-4">
+                          <div
+                            className={`w-4 h-4 rounded-full mt-1 flex-shrink-0 ${
+                              event.completed ? "bg-cyan-400" : "bg-white/20"
+                            }`}
+                          ></div>
+                          <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                              <div>
+                                <p
+                                  className={`font-semibold ${
+                                    event.completed
+                                      ? "text-white"
+                                      : "text-blue-300"
+                                  }`}
+                                >
+                                  {event.status}
+                                </p>
+                                <p className="text-blue-200 text-sm">
+                                  {event.location}
+                                </p>
+                              </div>
+                              <p className="text-blue-300 text-sm mt-1 sm:mt-0">
+                                {event.date}
                               </p>
                             </div>
-                            <p className="text-blue-300 text-sm mt-1 sm:mt-0">
-                              {event.date}
-                            </p>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-blue-200">No events available</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -232,13 +255,13 @@ const TrackShipment = () => {
         )}
 
         {/* Demo Info */}
-        <div className="mt-8 text-center">
+        {/* <div className="mt-8 text-center">
           <p className="text-blue-300 text-sm">
             Demo tracking numbers:{" "}
             <span className="font-mono text-cyan-400">CS123456789</span> or{" "}
             <span className="font-mono text-cyan-400">CS987654321</span>
           </p>
-        </div>
+        </div> */}
       </div>
     </div>
   );
