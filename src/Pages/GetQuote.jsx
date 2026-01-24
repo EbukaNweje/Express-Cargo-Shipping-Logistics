@@ -20,12 +20,13 @@ const GetQuote = () => {
     destination: "",
     weight: "",
     dimensions: "",
-    shipmentDate: "",
+    preferredShipDate: "",
     cargoType: "",
-    name: "",
+    fullName: "",
     email: "",
     phone: "",
     company: "",
+    notes: "",
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -65,15 +66,63 @@ const GetQuote = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
+    try {
+      // Prepare data for backend (only send required fields)
+      const backendData = {
+        origin: formData.origin,
+        destination: formData.destination,
+        weight: formData.weight,
+        dimensions: formData.dimensions,
+        preferredShipDate: formData.preferredShipDate,
+        cargoType: formData.cargoType,
+        fullName: formData.fullName,
+        company: formData.company,
+        email: formData.email,
+        phone: formData.phone,
+        notes: formData.notes,
+      };
+
+      const response = await fetch(
+        "https://express-cargo-backend.onrender.com/api/shipments/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(backendData),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to submit quote request");
+      }
+
       setIsSubmitting(false);
       setIsSubmitted(true);
-    }, 2000);
+      // Reset form data
+      setFormData({
+        serviceType: "",
+        origin: "",
+        destination: "",
+        weight: "",
+        dimensions: "",
+        preferredShipDate: "",
+        cargoType: "",
+        fullName: "",
+        email: "",
+        phone: "",
+        company: "",
+        notes: "",
+      });
+    } catch (error) {
+      setIsSubmitting(false);
+      alert("Error submitting quote request. Please try again.");
+      console.error("Error:", error);
+    }
   };
 
   if (isSubmitted) {
@@ -272,8 +321,8 @@ const GetQuote = () => {
                 </label>
                 <input
                   type="date"
-                  name="shipmentDate"
-                  value={formData.shipmentDate}
+                  name="preferredShipDate"
+                  value={formData.preferredShipDate}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                   required
@@ -328,8 +377,8 @@ const GetQuote = () => {
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="fullName"
+                  value={formData.fullName}
                   onChange={handleInputChange}
                   placeholder="Your full name"
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
@@ -377,6 +426,21 @@ const GetQuote = () => {
                   required
                 />
               </div>
+            </div>
+
+            {/* Additional Notes */}
+            <div className="mt-6">
+              <label className="block text-white font-semibold mb-2">
+                Additional Notes (Optional)
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                placeholder="Any special requirements, handling instructions, or additional information..."
+                rows="4"
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 resize-none"
+              ></textarea>
             </div>
           </div>
 
