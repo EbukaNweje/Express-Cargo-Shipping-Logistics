@@ -101,17 +101,26 @@ const Stats = () => {
           }
         });
       },
-      { threshold: 0.5 },
+      { threshold: 0.1 },
     );
 
     if (currentStatsRef) {
       observer.observe(currentStatsRef);
     }
 
+    // Fallback: Animate on component mount if not already animated
+    const timeoutId = setTimeout(() => {
+      if (!hasAnimated) {
+        setHasAnimated(true);
+        animateCounters();
+      }
+    }, 500);
+
     return () => {
       if (currentStatsRef) {
         observer.unobserve(currentStatsRef);
       }
+      clearTimeout(timeoutId);
     };
   }, [hasAnimated, animateCounters]);
 
@@ -143,7 +152,7 @@ const Stats = () => {
               <div className="relative group">
                 <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                   <img
-                    src="/download (1).jpeg"
+                    src="https://i.pinimg.com/736x/1e/42/a4/1e42a4c53605056fd7e7c3ff58899959.jpg"
                     alt="Air Cargo Services"
                     className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -176,7 +185,7 @@ const Stats = () => {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8 mb-16">
             {statsData.map((stat, index) => {
               const IconComponent = stat.icon;
               const displayValue = stat.displayDivisor
@@ -186,18 +195,18 @@ const Stats = () => {
               return (
                 <div
                   key={index}
-                  className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-8 border border-cyan-500/20 hover:border-cyan-500/50 transition-all duration-300 text-center"
+                  className="group relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-4 md:p-6 lg:p-8 border border-cyan-500/20 hover:border-cyan-500/50 transition-all duration-300 text-center"
                 >
                   {/* Icon */}
-                  <div className="flex justify-center mb-6">
-                    <div className="p-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/40 group-hover:to-blue-500/40 transition-all duration-300">
-                      <IconComponent className="w-8 h-8 text-cyan-400" />
+                  <div className="flex justify-center mb-4 md:mb-6">
+                    <div className="p-3 md:p-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/40 group-hover:to-blue-500/40 transition-all duration-300">
+                      <IconComponent className="w-6 md:w-8 h-6 md:h-8 text-cyan-400" />
                     </div>
                   </div>
 
                   {/* Counter */}
-                  <div className="mb-4">
-                    <div className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+                  <div className="mb-3 md:mb-4">
+                    <div className="text-3xl md:text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
                       {stat.isSpecial
                         ? `${displayValue}${stat.suffix}`
                         : `${displayValue}${stat.suffix}`}
@@ -205,11 +214,13 @@ const Stats = () => {
                   </div>
 
                   {/* Label */}
-                  <p className="text-blue-200 font-semibold">{stat.label}</p>
+                  <p className="text-xs md:text-sm lg:text-base text-blue-200 font-semibold">
+                    {stat.label}
+                  </p>
 
                   {/* Check Icon */}
-                  <div className="mt-4 text-green-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <FaCheckCircle className="w-5 h-5 mx-auto" />
+                  <div className="mt-3 md:mt-4 text-green-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <FaCheckCircle className="w-4 md:w-5 h-4 md:h-5 mx-auto" />
                   </div>
                 </div>
               );
@@ -238,7 +249,7 @@ const Stats = () => {
               <div className="relative group order-1 lg:order-2">
                 <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                   <img
-                    src="/aeroplane.jpg"
+                    src="https://i.pinimg.com/736x/63/f0/85/63f08555200408354715c4c2cf4a2421.jpg"
                     alt="Air Freight Services"
                     className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -260,7 +271,7 @@ const Stats = () => {
               <div className="relative group">
                 <div className="relative rounded-2xl overflow-hidden shadow-2xl">
                   <img
-                    src="/download (2).jpeg"
+                    src="https://i.pinimg.com/736x/65/75/fd/6575fd8cb44813c8996e2bceb4e6c979.jpg"
                     alt="Advanced Shipping Solutions"
                     className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
                   />

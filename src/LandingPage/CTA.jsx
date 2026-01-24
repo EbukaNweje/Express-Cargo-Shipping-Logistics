@@ -71,15 +71,15 @@ const CTA = () => {
               <FaPhone className="text-2xl text-cyan-400" />
             </div>
             <div className="text-white font-semibold mb-2">Call Us</div>
-            <div className="text-cyan-300 text-lg">+1 (555) 123-4567</div>
+            <div className="text-cyan-300 text-lg">+44 (7423) 799348</div>
           </div>
           <div className="group text-center">
             <div className="inline-flex p-4 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 group-hover:from-cyan-500/40 group-hover:to-blue-500/40 transition-all duration-300 mb-4">
               <FaEnvelope className="text-2xl text-cyan-400" />
             </div>
             <div className="text-white font-semibold mb-2">Email Us</div>
-            <div className="text-cyan-300 text-lg">
-              info@expresscargoship.com
+            <div className="text-cyan-300 text-[17px]">
+              expresscargoshippinglogisticss@gmail.com
             </div>
           </div>
           <div className="group text-center">
