@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaBox,
   FaSpinner,
@@ -63,29 +63,15 @@ const Hero = () => {
     );
   };
 
-  const handleTrack = async () => {
+  const navigate = useNavigate();
+
+  const handleTrack = () => {
     if (!trackingNumber.trim()) return;
 
-    setIsLoading(true);
-
-    try {
-      const response = await axios.get(
-        `https://express-cargo-backend.onrender.com/api/tracking/${trackingNumber.toUpperCase()}`,
-      );
-      setTrackingResult(response.data.data);
-      toast.success("Shipment found!", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-    } catch (error) {
-      setTrackingResult("not_found");
-      toast.error("Tracking number not found", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to the dedicated tracking page which will fetch and display full details
+    navigate(
+      `/track?number=${encodeURIComponent(trackingNumber.toUpperCase())}`,
+    );
   };
 
   const getStatusColor = (status) => {

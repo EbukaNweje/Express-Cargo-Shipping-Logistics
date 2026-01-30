@@ -17,6 +17,32 @@ const TrackShipment = () => {
 
   const apiUrl = "https://express-cargo-backend.onrender.com/api/tracking";
 
+  // Format a date string into a readable format (e.g. Jan 30, 2026)
+  const formatDateDisplay = (val) => {
+    if (!val) return "";
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      const day = d.getDate();
+      const month = d.getMonth() + 1; // month is 0-indexed
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return String(val);
+    }
+  };
+
+  // Format a number as currency (USD). Shows `-` when value is missing.
+  const formatCurrency = (val) => {
+    if (val === null || val === undefined || val === "") return "-";
+    const num = Number(val);
+    if (isNaN(num)) return String(val);
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(num);
+  };
+
   const handleTrackWithNumber = useCallback(async (number) => {
     if (!number.trim()) return;
 
@@ -27,9 +53,40 @@ const TrackShipment = () => {
       const response = await axios.get(`${apiUrl}/${number}`);
 
       if (response.data.success && response.data.data) {
-        console.log("object", response);
+        const raw = response.data.data;
 
-        setTrackingResult(response.data.data);
+        // Normalize fields and format dates for display
+        const normalized = {
+          ...raw,
+          trackingNumber:
+            raw.trackingNumber || raw.tracking_number || raw.trackingNo || number,
+          currentLocation:
+            raw.currentLocation || raw.current_location || raw.location || "",
+          status: raw.status || "",
+          estimatedDelivery: formatDateDisplay(
+            raw.estimatedDelivery || raw.estimated_delivery || raw.eta || raw.estimated_date || "",
+          ),
+          progress: raw.progress ?? (raw.progressPercent != null ? Number(raw.progressPercent) : 0),
+          events: (raw.events || []).map((ev) => ({
+            ...ev,
+            dateDisplay: formatDateDisplay(ev.date || ev.eventDate || ev.date_time || ev.timestamp || ""),
+            location: ev.location || ev.loc || "",
+            status: ev.status || ev.title || "",
+            completed: ev.completed ?? false,
+          })),
+          productName: raw.productName || raw.product_name || raw.product || "",
+          typeOfShipment:
+            raw.typeOfShipment || raw.type_of_shipment || raw.shipmentType || raw.shipment?.type || raw.type || "",
+          weight: raw.weight ?? raw.weightKg ?? raw.weight_kg ?? null,
+          quantity: raw.quantity ?? raw.qty ?? null,
+          totalFreight: raw.totalFreight ?? raw.total_freight ?? raw.freight ?? null,
+          pickupLocation: raw.pickupLocation || raw.pickup_location || "",
+          deliveryLocation: raw.deliveryLocation || raw.delivery_location || "",
+          sender: raw.sender || { name: raw.senderName || raw.sender_name || "" },
+          receiver: raw.receiver || { name: raw.receiverName || raw.receiver_name || "" },
+        };
+
+        setTrackingResult(normalized);
         toast.success("Tracking found!");
       } else {
         setTrackingResult("not_found");
@@ -75,7 +132,7 @@ const TrackShipment = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-blue-900 to-slate-800">
       {/* Navigation */}
       <nav className="p-6 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -111,7 +168,7 @@ const TrackShipment = () => {
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-6">
             Track Your{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-blue-500">
               Shipment
             </span>
           </h1>
@@ -134,7 +191,7 @@ const TrackShipment = () => {
             <button
               onClick={handleTrack}
               disabled={isLoading || !trackingNumber.trim()}
-              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="px-8 py-4 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isLoading ? (
                 <span className="flex items-center">
@@ -168,7 +225,7 @@ const TrackShipment = () => {
             ) : (
               <div>
                 {/* Status Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                   <div>
                     <h3 className="text-3xl font-bold text-white mb-2">
                       Tracking: {trackingNumber.toUpperCase()}
@@ -181,13 +238,45 @@ const TrackShipment = () => {
                       {trackingResult.status}
                     </p>
                     <p className="text-blue-200">
-                      Current Location: {trackingResult.currentLocation}
+                      Current Location: {trackingResult.currentLocation || "-"}
                     </p>
                   </div>
                   <div className="text-right mt-4 md:mt-0">
                     <p className="text-blue-200">Estimated Delivery</p>
                     <p className="text-xl font-bold text-white">
-                      {trackingResult.estimatedDelivery}
+                      {trackingResult.estimatedDelivery || "-"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid sm:grid-cols-2 gap-4 bg-white/5 p-4 rounded-md mb-6">
+                  <div className="space-y-2">
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Product:</span> {trackingResult.productName || "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Type:</span> {trackingResult.typeOfShipment || trackingResult.shipmentType || "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Weight:</span> {trackingResult.weight ?? "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Quantity:</span> {trackingResult.quantity ?? "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Total Freight:</span> {formatCurrency(trackingResult.totalFreight)}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Sender:</span> {trackingResult.sender?.name || trackingResult.senderName || "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Receiver:</span> {trackingResult.receiver?.name || trackingResult.receiverName || "-"}
+                    </p>
+                    <p className="text-sm text-blue-200">
+                      <span className="font-semibold text-white">Delivery Location:</span> {trackingResult.pickupLocation || "-"} <span className="text-white/60">→</span> {trackingResult.deliveryLocation || "-"}
                     </p>
                   </div>
                 </div>
@@ -200,7 +289,7 @@ const TrackShipment = () => {
                   </div>
                   <div className="w-full bg-white/10 rounded-full h-3">
                     <div
-                      className="bg-gradient-to-r from-cyan-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out"
+                      className="bg-linear-to-r from-cyan-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out"
                       style={{ width: `${trackingResult.progress}%` }}
                     ></div>
                   </div>
@@ -217,7 +306,7 @@ const TrackShipment = () => {
                       trackingResult.events.map((event, index) => (
                         <div key={index} className="flex items-start space-x-4">
                           <div
-                            className={`w-4 h-4 rounded-full mt-1 flex-shrink-0 ${
+                            className={`w-4 h-4 rounded-full mt-1 shrink-0 ${
                               event.completed ? "bg-cyan-400" : "bg-white/20"
                             }`}
                           ></div>
@@ -238,7 +327,7 @@ const TrackShipment = () => {
                                 </p>
                               </div>
                               <p className="text-blue-300 text-sm mt-1 sm:mt-0">
-                                {event.date}
+                                {event.dateDisplay || event.date}
                               </p>
                             </div>
                           </div>
