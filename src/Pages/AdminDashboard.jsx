@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -23,7 +23,13 @@ import axios from "axios";
 
 const AdminDashboard = () => {
   // const { data: trackingData, refreshData } = useTrackingData();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try {
+      return !!localStorage.getItem("adminLoggedIn");
+    } catch {
+      return false;
+    }
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -55,6 +61,9 @@ const AdminDashboard = () => {
   });
 
   const [allTracking, setAllTracking] = useState({});
+  const [formStep, setFormStep] = useState(1);
+  const totalSteps = 4;
+  const [stepErrors, setStepErrors] = useState({});
 
   const url = "https://express-cargo-backend.onrender.com/api/tracking";
 
@@ -84,6 +93,11 @@ const AdminDashboard = () => {
 
         // Delay dashboard display to show success toast
         setTimeout(() => {
+          try {
+            localStorage.setItem("adminLoggedIn", "true");
+          } catch {
+            /* ignore storage errors */
+          }
           setIsLoggedIn(true);
           setEmail("");
           setPassword("");
@@ -107,8 +121,15 @@ const AdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setPassword("");
+    if (window.confirm("Are you sure you want to log out?")) {
+      try {
+        localStorage.removeItem("adminLoggedIn");
+      } catch {
+        /* ignore storage errors */
+      }
+      setIsLoggedIn(false);
+      setPassword("");
+    }
   };
 
   const resetForm = () => {
@@ -134,6 +155,8 @@ const AdminDashboard = () => {
     });
     setEditingId(null);
     setShowForm(false);
+    setFormStep(1);
+    setStepErrors({});
   };
 
   const handleAddNew = () => {
@@ -222,6 +245,7 @@ const AdminDashboard = () => {
       });
 
       setEditingId(id);
+      setFormStep(1);
       setShowForm(true);
     } catch (err) {
       console.log("Error fetching entry for edit:", err);
@@ -271,6 +295,7 @@ const AdminDashboard = () => {
         });
 
         setEditingId(id);
+        setFormStep(1);
         setShowForm(true);
       }
     }
@@ -289,8 +314,14 @@ const AdminDashboard = () => {
           delete updated[id];
           return updated;
         });
+        // If the deleted entry was being edited, clear the edit state and reset the form
+        if (editingId === id) {
+          setEditingId(null);
+          setShowForm(false);
+          setFormStep(1);
+          setStepErrors({});
+        }
         toast.success("Tracking entry deleted successfully!");
-        window.location.reload();
       } catch (err) {
         console.log("error deleting:", err);
         toast.error("Error deleting tracking entry");
@@ -298,6 +329,50 @@ const AdminDashboard = () => {
         setLoadingId(null);
       }
     }
+  };
+
+  const isStepValid = (step) => {
+    const t = (v = "") => (typeof v === "string" ? v.trim() : v);
+    if (step === 1)
+      return t(formData.currentLocation) && formData.estimatedDelivery;
+    if (step === 2) return t(formData.productName);
+    if (step === 3)
+      return (
+        t(formData.senderName) &&
+        t(formData.receiverName) &&
+        (t(formData.senderEmail) ||
+          t(formData.receiverEmail) ||
+          t(formData.receiverPhone))
+      );
+    if (step === 4)
+      return (
+        // Make step 4 optional: allow empty totalFreight, weight, quantity; if provided, they must be valid non-negative numbers
+        (formData.totalFreight === "" ||
+          (!Number.isNaN(Number(formData.totalFreight)) &&
+            Number(formData.totalFreight) >= 0)) &&
+        (formData.weight === "" || Number(formData.weight) >= 0) &&
+        (formData.quantity === "" || Number(formData.quantity) >= 0)
+      );
+    return true;
+  };
+
+  const validateStep = (step) => {
+    if (isStepValid(step)) {
+      setStepErrors((s) => ({ ...s, [step]: "" }));
+      return true;
+    }
+    let msg = "Please complete required fields for this step.";
+    if (step === 1)
+      msg = "Please enter Current Location and Estimated Delivery.";
+    else if (step === 2) msg = "Please provide Product Name.";
+    else if (step === 3)
+      msg =
+        "Please provide Sender and Receiver names and at least one contact (email or phone).";
+    else if (step === 4)
+      msg =
+        "Please enter a valid Total Freight and non-negative numbers for weight/quantity.";
+    setStepErrors((s) => ({ ...s, [step]: msg }));
+    return false;
   };
 
   const handleSubmit = async (e) => {
@@ -466,6 +541,20 @@ const AdminDashboard = () => {
 
     handleGetAllTrackingData();
   }, []);
+
+  // Keep body from scrolling when modal open and focus first input
+  const formFirstInputRef = useRef(null);
+  useEffect(() => {
+    if (showForm) {
+      document.body.style.overflow = "hidden";
+      setTimeout(() => formFirstInputRef.current?.focus(), 50);
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showForm]);
 
   if (!isLoggedIn) {
     return (
@@ -730,445 +819,552 @@ const AdminDashboard = () => {
 
         {/* Add/Edit Form */}
         {showForm && (
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">
-                {editingId ? "Edit Tracking" : "Add New Tracking"}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="text-gray-400 hover:text-white transition-colors"
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={resetForm}
+            ></div>
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-4xl w-full mx-4"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-white">
+                  {editingId ? "Edit Tracking" : "Add New Tracking"}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <FaTimes size={20} />
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && formStep < totalSteps) {
+                    e.preventDefault();
+                  }
+                }}
+                className="space-y-6"
               >
-                <FaTimes size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Tracking Number
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={formData.trackingNumber}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          trackingNumber: e.target.value,
-                        })
-                      }
-                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                      placeholder="e.g., ECSL123456789"
-                      required
-                      disabled={!!editingId}
-                    />
-                    <button
-                      type="button"
-                      onClick={generateTrackingNumber}
-                      disabled={!!editingId}
-                      className="px-4 py-3 bg-linear-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                      title="Generate Tracking Number"
-                    >
-                      Generate
-                    </button>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-white">
+                      {editingId ? "Edit Tracking" : "Add New Tracking"}
+                    </h2>
+                    <div className="text-sm text-blue-200">
+                      Step {formStep} of {totalSteps}
+                    </div>
                   </div>
-                </div> */}
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Current Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.currentLocation}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        currentLocation: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                    placeholder="e.g., Port of Los Angeles, CA"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Estimated Delivery
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.estimatedDelivery}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        estimatedDelivery: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                    required
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Delivery Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.deliveryLocation}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        deliveryLocation: e.target.value,
-                      })
-                    }
-                    placeholder="Delivery address or port"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-              </div>
-
-              {/* Status and Progress */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({ ...formData, status: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  >
-                    <option value="Pending" className="bg-gray-900">
-                      Pending
-                    </option>
-                    <option value="In Transit" className="bg-gray-900">
-                      In Transit
-                    </option>
-                    <option value="Delivered" className="bg-gray-900">
-                      Delivered
-                    </option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Progress (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.progress}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        progress: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                    placeholder="0-100"
-                  />
-                </div>
-              </div>
-
-              {/* Sender & Receiver */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Sender's Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.senderName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, senderName: e.target.value })
-                    }
-                    placeholder="Sender's full name"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Sender's Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.senderEmail}
-                    onChange={(e) =>
-                      setFormData({ ...formData, senderEmail: e.target.value })
-                    }
-                    placeholder="sender@email.com"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Receiver's Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.receiverName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, receiverName: e.target.value })
-                    }
-                    placeholder="Receiver's full name"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Receiver's Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.receiverEmail}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        receiverEmail: e.target.value,
-                      })
-                    }
-                    placeholder="receiver@email.com"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-              </div>
-
-              {/* Shipment Details */}
-              <div className="grid md:grid-cols-2 gap-6 mt-4">
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Receiver's Phone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.receiverPhone}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        receiverPhone: e.target.value,
-                      })
-                    }
-                    placeholder="+1 (555) 123-4567"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.productName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, productName: e.target.value })
-                    }
-                    placeholder="Product name"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Type of Shipment
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.shipmentType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, shipmentType: e.target.value })
-                    }
-                    placeholder="e.g., Air, Sea, Road"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Weight (kg)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.weight}
-                    onChange={(e) =>
-                      setFormData({ ...formData, weight: e.target.value })
-                    }
-                    placeholder="Weight in kg"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) =>
-                      setFormData({ ...formData, quantity: e.target.value })
-                    }
-                    placeholder="Number of items"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Total Freight ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.totalFreight}
-                    onChange={(e) =>
-                      setFormData({ ...formData, totalFreight: e.target.value })
-                    }
-                    placeholder="Total freight cost"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div>
-                {/* <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Pickup Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.pickupDate}
-                    onChange={(e) =>
-                      setFormData({ ...formData, pickupDate: e.target.value })
-                    }
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div> */}
-                {/* <div>
-                  <label className="block text-white font-semibold mb-2">
-                    Pickup Location
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.pickupLocation}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        pickupLocation: e.target.value,
-                      })
-                    }
-                    placeholder="Pickup address or port"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
-                  />
-                </div> */}
-              </div>
-
-              {/* Timeline Events */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <label className="block text-white font-semibold">
-                    Timeline Events
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addTimelineEvent}
-                    className="px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors flex items-center space-x-2"
-                  >
-                    <FaPlus size={12} />
-                    <span>Add Event</span>
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  {formData.events.map((event, index) => (
+                  <div className="h-2 bg-white/10 rounded-full mb-4">
                     <div
-                      key={index}
-                      className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg"
-                    >
-                      <input
-                        type="date"
-                        value={event.date}
-                        onChange={(e) =>
-                          updateTimelineEvent(index, "date", e.target.value)
-                        }
-                        className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
-                      />
-                      <select
-                        value={event.status}
-                        onChange={(e) =>
-                          updateTimelineEvent(index, "status", e.target.value)
-                        }
-                        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
-                      >
-                        <option value="" className="bg-gray-900">
-                          Select Status
-                        </option>
-                        <option value="Pending" className="bg-gray-900">
-                          Pending
-                        </option>
-                        <option value="In Transit" className="bg-gray-900">
-                          In Transit
-                        </option>
-                        <option value="Delivered" className="bg-gray-900">
-                          Delivered
-                        </option>
-                      </select>
-                      <input
-                        type="text"
-                        value={event.location}
-                        onChange={(e) =>
-                          updateTimelineEvent(index, "location", e.target.value)
-                        }
-                        placeholder="Location"
-                        className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
-                      />
-                      <label className="flex items-center space-x-2 text-white text-sm">
-                        <input
-                          type="checkbox"
-                          checked={event.completed}
-                          onChange={(e) =>
-                            updateTimelineEvent(
-                              index,
-                              "completed",
-                              e.target.checked,
-                            )
-                          }
-                          className="rounded"
-                        />
-                        <span>Completed</span>
-                      </label>
+                      className="h-2 bg-cyan-400 rounded-full"
+                      style={{ width: `${(formStep / totalSteps) * 100}%` }}
+                    />
+                  </div>
+
+                  <div className="max-h-[60vh] overflow-y-auto pr-2">
+                    {stepErrors[formStep] && (
+                      <div className="text-red-400 text-sm mb-3">
+                        {stepErrors[formStep]}
+                      </div>
+                    )}
+                    {/* Step 1: Basic */}
+                    {formStep === 1 && (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Current Location
+                          </label>
+                          <input
+                            type="text"
+                            ref={formFirstInputRef}
+                            value={formData.currentLocation}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                currentLocation: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            placeholder="e.g., Port of Los Angeles, CA"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Estimated Delivery
+                          </label>
+                          <input
+                            type="date"
+                            value={formData.estimatedDelivery}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                estimatedDelivery: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Delivery Location
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.deliveryLocation}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                deliveryLocation: e.target.value,
+                              })
+                            }
+                            placeholder="Delivery address or port"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 2: Status & Shipment */}
+                    {formStep === 2 && (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Status
+                          </label>
+                          <select
+                            value={formData.status}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                status: e.target.value,
+                              })
+                            }
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          >
+                            <option value="Pending" className="bg-gray-900">
+                              Pending
+                            </option>
+                            <option value="In Transit" className="bg-gray-900">
+                              In Transit
+                            </option>
+                            <option value="Delivered" className="bg-gray-900">
+                              Delivered
+                            </option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Progress (%)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={formData.progress}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                progress: parseInt(e.target.value) || 0,
+                              })
+                            }
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            placeholder="0-100"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Product Name
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.productName}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                productName: e.target.value,
+                              })
+                            }
+                            placeholder="Product name"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Type of Shipment
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.shipmentType}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                shipmentType: e.target.value,
+                              })
+                            }
+                            placeholder="e.g., Air, Sea, Road"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 3: Sender & Receiver */}
+                    {formStep === 3 && (
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Sender's Name
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.senderName}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                senderName: e.target.value,
+                              })
+                            }
+                            placeholder="Sender's full name"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Sender's Email
+                          </label>
+                          <input
+                            type="email"
+                            value={formData.senderEmail}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                senderEmail: e.target.value,
+                              })
+                            }
+                            placeholder="sender@email.com"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Receiver's Name
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.receiverName}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                receiverName: e.target.value,
+                              })
+                            }
+                            placeholder="Receiver's full name"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Receiver's Email
+                          </label>
+                          <input
+                            type="email"
+                            value={formData.receiverEmail}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                receiverEmail: e.target.value,
+                              })
+                            }
+                            placeholder="receiver@email.com"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-semibold mb-2">
+                            Receiver's Phone
+                          </label>
+                          <input
+                            type="tel"
+                            value={formData.receiverPhone}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                receiverPhone: e.target.value,
+                              })
+                            }
+                            placeholder="+1 (555) 123-4567"
+                            className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Step 4: Shipment Details & Timeline */}
+                    {formStep === 4 && (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-white font-semibold mb-2">
+                              Weight (kg)
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.weight}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  weight: e.target.value,
+                                })
+                              }
+                              placeholder="Weight in kg"
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-white font-semibold mb-2">
+                              Quantity
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.quantity}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  quantity: e.target.value,
+                                })
+                              }
+                              placeholder="Number of items"
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-white font-semibold mb-2">
+                              Total Freight ($)
+                            </label>
+                            <input
+                              type="number"
+                              value={formData.totalFreight}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  totalFreight: e.target.value,
+                                })
+                              }
+                              placeholder="Total freight cost"
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-white font-semibold mb-2">
+                              Pickup Date
+                            </label>
+                            <input
+                              type="date"
+                              value={formData.pickupDate}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  pickupDate: e.target.value,
+                                })
+                              }
+                              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <label className="block text-white font-semibold">
+                              Timeline Events
+                            </label>
+                            <button
+                              type="button"
+                              onClick={addTimelineEvent}
+                              className="px-4 py-2 bg-cyan-500/20 text-cyan-400 rounded-lg hover:bg-cyan-500/30 transition-colors flex items-center space-x-2"
+                            >
+                              <FaPlus size={12} />
+                              <span>Add Event</span>
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            {formData.events.map((event, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg"
+                              >
+                                <input
+                                  type="date"
+                                  value={event.date}
+                                  onChange={(e) =>
+                                    updateTimelineEvent(
+                                      index,
+                                      "date",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
+                                />
+                                <select
+                                  value={event.status}
+                                  onChange={(e) =>
+                                    updateTimelineEvent(
+                                      index,
+                                      "status",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
+                                >
+                                  <option value="" className="bg-gray-900">
+                                    Select Status
+                                  </option>
+                                  <option
+                                    value="Pending"
+                                    className="bg-gray-900"
+                                  >
+                                    Pending
+                                  </option>
+                                  <option
+                                    value="In Transit"
+                                    className="bg-gray-900"
+                                  >
+                                    In Transit
+                                  </option>
+                                  <option
+                                    value="Delivered"
+                                    className="bg-gray-900"
+                                  >
+                                    Delivered
+                                  </option>
+                                </select>
+                                <input
+                                  type="text"
+                                  value={event.location}
+                                  onChange={(e) =>
+                                    updateTimelineEvent(
+                                      index,
+                                      "location",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="Location"
+                                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
+                                />
+                                <label className="flex items-center space-x-2 text-white text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={event.completed}
+                                    onChange={(e) =>
+                                      updateTimelineEvent(
+                                        index,
+                                        "completed",
+                                        e.target.checked,
+                                      )
+                                    }
+                                    className="rounded"
+                                  />
+                                  <span>Completed</span>
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => removeTimelineEvent(index)}
+                                  className="text-red-400 hover:text-red-300 transition-colors"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <div>
+                    {formStep > 1 && (
                       <button
                         type="button"
-                        onClick={() => removeTimelineEvent(index)}
-                        className="text-red-400 hover:text-red-300 transition-colors"
+                        onClick={() => setFormStep((s) => s - 1)}
+                        className="px-6 py-3 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/10 transition-all duration-300"
                       >
-                        <FaTrash />
+                        ← Back
                       </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                    )}
+                  </div>
 
-              <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-6 py-3 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
-                >
-                  {isLoading ? (
-                    <FaSpinner className="animate-spin" />
-                  ) : (
-                    <FaSave />
-                  )}
-                  <span>{editingId ? "Update Tracking" : "Save Tracking"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  disabled={isLoading}
-                  className="px-6 py-3 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      disabled={isLoading}
+                      className="px-4 py-2 border border-white/30 text-white font-semibold rounded-lg hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
+                    >
+                      Cancel
+                    </button>
+
+                    {formStep < totalSteps ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!validateStep(formStep)) return;
+                          // Defer step change to avoid the same click being applied to the newly-rendered Submit button
+                          setTimeout(() => {
+                            setFormStep((s) => s + 1);
+                            // blur active element to avoid accidental Enter triggering submit
+                            const active = document.activeElement;
+                            if (active && typeof active.blur === "function")
+                              active.blur();
+                          }, 120);
+                        }}
+                        disabled={!isStepValid(formStep)}
+                        className="px-6 py-3 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Next →
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="px-6 py-3 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
+                      >
+                        {isLoading ? (
+                          <FaSpinner className="animate-spin" />
+                        ) : (
+                          <FaSave />
+                        )}
+                        <span>
+                          {editingId ? "Update Tracking" : "Save Tracking"}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

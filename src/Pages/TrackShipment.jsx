@@ -59,31 +59,52 @@ const TrackShipment = () => {
         const normalized = {
           ...raw,
           trackingNumber:
-            raw.trackingNumber || raw.tracking_number || raw.trackingNo || number,
+            raw.trackingNumber ||
+            raw.tracking_number ||
+            raw.trackingNo ||
+            number,
           currentLocation:
             raw.currentLocation || raw.current_location || raw.location || "",
           status: raw.status || "",
           estimatedDelivery: formatDateDisplay(
-            raw.estimatedDelivery || raw.estimated_delivery || raw.eta || raw.estimated_date || "",
+            raw.estimatedDelivery ||
+              raw.estimated_delivery ||
+              raw.eta ||
+              raw.estimated_date ||
+              "",
           ),
-          progress: raw.progress ?? (raw.progressPercent != null ? Number(raw.progressPercent) : 0),
+          progress:
+            raw.progress ??
+            (raw.progressPercent != null ? Number(raw.progressPercent) : 0),
           events: (raw.events || []).map((ev) => ({
             ...ev,
-            dateDisplay: formatDateDisplay(ev.date || ev.eventDate || ev.date_time || ev.timestamp || ""),
+            dateDisplay: formatDateDisplay(
+              ev.date || ev.eventDate || ev.date_time || ev.timestamp || "",
+            ),
             location: ev.location || ev.loc || "",
             status: ev.status || ev.title || "",
             completed: ev.completed ?? false,
           })),
           productName: raw.productName || raw.product_name || raw.product || "",
           typeOfShipment:
-            raw.typeOfShipment || raw.type_of_shipment || raw.shipmentType || raw.shipment?.type || raw.type || "",
+            raw.typeOfShipment ||
+            raw.type_of_shipment ||
+            raw.shipmentType ||
+            raw.shipment?.type ||
+            raw.type ||
+            "",
           weight: raw.weight ?? raw.weightKg ?? raw.weight_kg ?? null,
           quantity: raw.quantity ?? raw.qty ?? null,
-          totalFreight: raw.totalFreight ?? raw.total_freight ?? raw.freight ?? null,
+          totalFreight:
+            raw.totalFreight ?? raw.total_freight ?? raw.freight ?? null,
           pickupLocation: raw.pickupLocation || raw.pickup_location || "",
           deliveryLocation: raw.deliveryLocation || raw.delivery_location || "",
-          sender: raw.sender || { name: raw.senderName || raw.sender_name || "" },
-          receiver: raw.receiver || { name: raw.receiverName || raw.receiver_name || "" },
+          sender: raw.sender || {
+            name: raw.senderName || raw.sender_name || "",
+          },
+          receiver: raw.receiver || {
+            name: raw.receiverName || raw.receiver_name || "",
+          },
         };
 
         setTrackingResult(normalized);
@@ -253,30 +274,54 @@ const TrackShipment = () => {
                 <div className="grid sm:grid-cols-2 gap-4 bg-white/5 p-4 rounded-md mb-6">
                   <div className="space-y-2">
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Product:</span> {trackingResult.productName || "-"}
+                      <span className="font-semibold text-white">Product:</span>{" "}
+                      {trackingResult.productName || "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Type:</span> {trackingResult.typeOfShipment || trackingResult.shipmentType || "-"}
+                      <span className="font-semibold text-white">Type:</span>{" "}
+                      {trackingResult.typeOfShipment ||
+                        trackingResult.shipmentType ||
+                        "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Weight:</span> {trackingResult.weight ?? "-"}
+                      <span className="font-semibold text-white">Weight:</span>{" "}
+                      {trackingResult.weight ?? "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Quantity:</span> {trackingResult.quantity ?? "-"}
+                      <span className="font-semibold text-white">
+                        Quantity:
+                      </span>{" "}
+                      {trackingResult.quantity ?? "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Total Freight:</span> {formatCurrency(trackingResult.totalFreight)}
+                      <span className="font-semibold text-white">
+                        Total Freight:
+                      </span>{" "}
+                      {formatCurrency(trackingResult.totalFreight)}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Sender:</span> {trackingResult.sender?.name || trackingResult.senderName || "-"}
+                      <span className="font-semibold text-white">Sender:</span>{" "}
+                      {trackingResult.sender?.name ||
+                        trackingResult.senderName ||
+                        "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Receiver:</span> {trackingResult.receiver?.name || trackingResult.receiverName || "-"}
+                      <span className="font-semibold text-white">
+                        Receiver:
+                      </span>{" "}
+                      {trackingResult.receiver?.name ||
+                        trackingResult.receiverName ||
+                        "-"}
                     </p>
                     <p className="text-sm text-blue-200">
-                      <span className="font-semibold text-white">Delivery Location:</span> {trackingResult.pickupLocation || "-"} <span className="text-white/60">→</span> {trackingResult.deliveryLocation || "-"}
+                      <span className="font-semibold text-white">
+                        Delivery Location:
+                      </span>{" "}
+                      {trackingResult.pickupLocation || "-"}{" "}
+                      <span className="text-white/60">→</span>{" "}
+                      {trackingResult.deliveryLocation || "-"}
                     </p>
                   </div>
                 </div>
