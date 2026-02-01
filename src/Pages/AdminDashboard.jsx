@@ -176,6 +176,21 @@ const AdminDashboard = () => {
     }
   };
 
+  // Format date for display as DD/MM/YYYY
+  const formatDateDisplay = (val) => {
+    if (!val) return "";
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return String(val);
+      const day = d.getDate();
+      const month = d.getMonth() + 1;
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return String(val);
+    }
+  };
+
   const handleEdit = async (id) => {
     try {
       const res = await axios.get(`${url}/${id}`);
@@ -446,6 +461,7 @@ const AdminDashboard = () => {
           date: new Date().toISOString().split("T")[0],
           status: "",
           location: "",
+          note: "",
           completed: false,
         },
       ],
@@ -486,12 +502,13 @@ const AdminDashboard = () => {
               "",
             currentLocation:
               entry.currentLocation || entry.current_location || "",
-            estimatedDelivery:
+            estimatedDelivery: formatDateDisplay(
               entry.estimatedDelivery ||
-              entry.estimated_delivery ||
-              entry.eta ||
-              entry.etaDate ||
-              "",
+                entry.estimated_delivery ||
+                entry.eta ||
+                entry.etaDate ||
+                "",
+            ),
             progress:
               entry.progress != null
                 ? entry.progress
@@ -662,7 +679,7 @@ const AdminDashboard = () => {
       />
       {/* Navigation */}
       <nav className="p-6 bg-white backdrop-blur-md shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0">
           <Link
             to="/"
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-300"
@@ -681,7 +698,7 @@ const AdminDashboard = () => {
               </span>
             </div>
           </Link>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link
               to="/"
               className="text-gray-700 hover:text-cyan-600 transition-colors duration-300 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
@@ -690,7 +707,7 @@ const AdminDashboard = () => {
             </Link>
             <button
               onClick={handleLogout}
-              className="text-red-600 hover:text-red-700 transition-colors duration-300 px-4 py-2 border border-red-300 rounded-md hover:bg-red-50"
+              className="text-red-600 hover:text-red-700 transition-colors duration-300 px-3 py-2 sm:px-4 sm:py-2 border border-red-300 rounded-md hover:bg-red-50"
             >
               Logout
             </button>
@@ -700,7 +717,7 @@ const AdminDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold text-white mb-2">
               Tracking Management
@@ -711,10 +728,11 @@ const AdminDashboard = () => {
           </div>
           <button
             onClick={handleAddNew}
-            className="px-6 py-3 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
+            title="Add New Tracking"
+            className="px-4 py-2 sm:px-6 sm:py-3 bg-linear-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-lg hover:from-cyan-400 hover:to-blue-500 transform hover:scale-105 transition-all duration-300 flex items-center space-x-2"
           >
             <FaPlus />
-            <span>Add New Tracking</span>
+            <span className="hidden sm:inline">Add New Tracking</span>
           </button>
         </div>
 
@@ -727,7 +745,7 @@ const AdminDashboard = () => {
             </p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {Object.values(allTracking || {}).map((entry) => (
               <div
                 key={entry._id}
@@ -735,7 +753,7 @@ const AdminDashboard = () => {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white mb-1">
+                    <h3 className="text-xl font-bold text-white mb-1 wrap-break-word">
                       {entry.trackingNumber}
                     </h3>
                     <p
@@ -827,7 +845,7 @@ const AdminDashboard = () => {
             <div
               role="dialog"
               aria-modal="true"
-              className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 max-w-4xl w-full mx-4"
+              className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-white/20 max-w-full sm:max-w-2xl md:max-w-4xl w-full mx-4"
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-white">
@@ -867,7 +885,7 @@ const AdminDashboard = () => {
                     />
                   </div>
 
-                  <div className="max-h-[60vh] overflow-y-auto pr-2">
+                  <div className="max-h-[70vh] md:max-h-[80vh] overflow-y-auto pr-2">
                     {stepErrors[formStep] && (
                       <div className="text-red-400 text-sm mb-3">
                         {stepErrors[formStep]}
@@ -1211,88 +1229,113 @@ const AdminDashboard = () => {
                             {formData.events.map((event, index) => (
                               <div
                                 key={index}
-                                className="flex items-center space-x-4 p-4 bg-white/5 rounded-lg"
+                                className="space-y-2 p-4 bg-white/5 rounded-lg"
                               >
-                                <input
-                                  type="date"
-                                  value={event.date}
-                                  onChange={(e) =>
-                                    updateTimelineEvent(
-                                      index,
-                                      "date",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
-                                />
-                                <select
-                                  value={event.status}
-                                  onChange={(e) =>
-                                    updateTimelineEvent(
-                                      index,
-                                      "status",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
-                                >
-                                  <option value="" className="bg-gray-900">
-                                    Select Status
-                                  </option>
-                                  <option
-                                    value="Pending"
-                                    className="bg-gray-900"
-                                  >
-                                    Pending
-                                  </option>
-                                  <option
-                                    value="In Transit"
-                                    className="bg-gray-900"
-                                  >
-                                    In Transit
-                                  </option>
-                                  <option
-                                    value="Delivered"
-                                    className="bg-gray-900"
-                                  >
-                                    Delivered
-                                  </option>
-                                </select>
-                                <input
-                                  type="text"
-                                  value={event.location}
-                                  onChange={(e) =>
-                                    updateTimelineEvent(
-                                      index,
-                                      "location",
-                                      e.target.value,
-                                    )
-                                  }
-                                  placeholder="Location"
-                                  className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
-                                />
-                                <label className="flex items-center space-x-2 text-white text-sm">
+                                <div className="flex items-center space-x-4">
                                   <input
-                                    type="checkbox"
-                                    checked={event.completed}
+                                    type="date"
+                                    value={event.date}
                                     onChange={(e) =>
                                       updateTimelineEvent(
                                         index,
-                                        "completed",
-                                        e.target.checked,
+                                        "date",
+                                        e.target.value,
                                       )
                                     }
-                                    className="rounded"
+                                    className="px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
                                   />
-                                  <span>Completed</span>
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() => removeTimelineEvent(index)}
-                                  className="text-red-400 hover:text-red-300 transition-colors"
-                                >
-                                  <FaTrash />
-                                </button>
+                                  <select
+                                    value={event.status}
+                                    onChange={(e) =>
+                                      updateTimelineEvent(
+                                        index,
+                                        "status",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:border-cyan-400"
+                                  >
+                                    <option value="" className="bg-gray-900">
+                                      Select Status
+                                    </option>
+                                    <option
+                                      value="Pending"
+                                      className="bg-gray-900"
+                                    >
+                                      Pending
+                                    </option>
+                                    <option
+                                      value="In Transit"
+                                      className="bg-gray-900"
+                                    >
+                                      In Transit
+                                    </option>
+                                    <option
+                                      value="Delivered"
+                                      className="bg-gray-900"
+                                    >
+                                      Delivered
+                                    </option>
+                                  </select>
+                                </div>
+
+                                <div className="flex items-center space-x-4">
+                                  <input
+                                    type="text"
+                                    value={event.location}
+                                    onChange={(e) =>
+                                      updateTimelineEvent(
+                                        index,
+                                        "location",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Location"
+                                    className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
+                                  />
+                                  <label className="flex items-center space-x-2 text-white text-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={event.completed}
+                                      onChange={(e) =>
+                                        updateTimelineEvent(
+                                          index,
+                                          "completed",
+                                          e.target.checked,
+                                        )
+                                      }
+                                      className="rounded"
+                                    />
+                                    <span>Completed</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTimelineEvent(index)}
+                                    className="text-red-400 hover:text-red-300 transition-colors"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+
+                                <div>
+                                  <label className="block text-white text-sm mb-1">
+                                    Note / Update
+                                  </label>
+                                  <textarea
+                                    rows={2}
+                                    value={event.note || ""}
+                                    onChange={(e) =>
+                                      updateTimelineEvent(
+                                        index,
+                                        "note",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Write an update about this shipment or product (optional)"
+                                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white placeholder-blue-300 text-sm focus:outline-none focus:border-cyan-400"
+                                  />
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1315,7 +1358,7 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0">
                     <button
                       type="button"
                       onClick={resetForm}

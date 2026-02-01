@@ -13,6 +13,8 @@ const TrackShipment = () => {
   const [trackingNumber, setTrackingNumber] = useState(numberFromUrl || "");
   const [trackingResult, setTrackingResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState({});
+  const [latestExpanded, setLatestExpanded] = useState(false);
   const hasAutoTrackedRef = useRef(false);
 
   const apiUrl = "https://express-cargo-backend.onrender.com/api/tracking";
@@ -42,6 +44,15 @@ const TrackShipment = () => {
       currency: "USD",
     }).format(num);
   };
+
+  // Truncate helper for long notes
+  const truncate = (str = "", len = 200) => {
+    if (typeof str !== "string") return String(str);
+    return str.length > len ? str.slice(0, len) + "..." : str;
+  };
+
+  const toggleExpanded = (idx) =>
+    setExpandedNotes((s) => ({ ...s, [idx]: !s[idx] }));
 
   const handleTrackWithNumber = useCallback(async (number) => {
     if (!number.trim()) return;
@@ -83,8 +94,10 @@ const TrackShipment = () => {
             ),
             location: ev.location || ev.loc || "",
             status: ev.status || ev.title || "",
+            note: ev.note || ev.notes || ev.message || ev.description || "",
             completed: ev.completed ?? false,
           })),
+
           productName: raw.productName || raw.product_name || raw.product || "",
           typeOfShipment:
             raw.typeOfShipment ||
@@ -151,6 +164,18 @@ const TrackShipment = () => {
         return "text-gray-400";
     }
   };
+
+  // Find the latest event note (search from the end)
+  let latestNote = "";
+  let latestNoteIndex = -1;
+  if (trackingResult?.events?.length) {
+    for (let i = trackingResult.events.length - 1; i >= 0; i--) {
+      if (trackingResult.events[i].note) {
+        latestNote = trackingResult.events[i].note;
+        break;
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-900 via-blue-900 to-slate-800">
@@ -261,6 +286,28 @@ const TrackShipment = () => {
                     <p className="text-blue-200">
                       Current Location: {trackingResult.currentLocation || "-"}
                     </p>
+
+                    {/* Latest note (if any) */}
+                    {latestNote && (
+                      <div className="mt-3 mb-1 bg-white/5 p-3 rounded">
+                        <p className="text-sm text-white font-semibold mb-1">
+                          Latest update:
+                        </p>
+                        <p className="text-blue-200 text-sm italic">
+                          {latestExpanded
+                            ? latestNote
+                            : truncate(latestNote, 300)}
+                        </p>
+                        {latestNote.length > 300 && (
+                          <button
+                            onClick={() => setLatestExpanded((v) => !v)}
+                            className="text-cyan-400 text-sm mt-2"
+                          >
+                            {latestExpanded ? "Show less" : "Read more"}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right mt-4 md:mt-0">
                     <p className="text-blue-200">Estimated Delivery</p>
@@ -370,6 +417,26 @@ const TrackShipment = () => {
                                 <p className="text-blue-200 text-sm">
                                   {event.location}
                                 </p>
+                                {event.note && (
+                                  <div>
+                                    <p className="text-blue-200 text-sm mt-1 italic">
+                                      {expandedNotes[index]
+                                        ? event.note
+                                        : truncate(event.note, 200)}
+                                    </p>
+                                    {event.note.length > 200 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleExpanded(index)}
+                                        className="text-cyan-400 text-sm mt-1"
+                                      >
+                                        {expandedNotes[index]
+                                          ? "Show less"
+                                          : "Read more"}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <p className="text-blue-300 text-sm mt-1 sm:mt-0">
                                 {event.dateDisplay || event.date}
